@@ -2,7 +2,7 @@ import pygame
 import random
 
 # ウィンドウのサイズ
-WINDOW_WIDTH = 800
+WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 600
 
 # 色
@@ -13,7 +13,11 @@ RED = (255, 0, 0)
 YELLOW = (255, 255, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+ORANGE = (255,165,0)
+GREENYELLOW = (173,255,47)
 
+#カラーインデックスの定義
+colors = [RED, ORANGE, YELLOW, GREENYELLOW , GREEN]
 
 # 自機の設定
 player_x = 50 #初期位置のx座標
@@ -26,16 +30,24 @@ player_health = 5 #自機の体力
 bullet_x = player_x + player_width
 bullet_y = player_y
 bullet_speed = 5
-can_shoot = True  # 弾を発射できるかどうかのフラグ
-bullet_cooldown = 100  # 弾のクールダウン時間（ミリ秒）
+
+#弾の発射間隔設定
+bullet_cooldown = 1000  # 弾のクールダウン時間（ミリ秒）
 last_shoot_time = 0
+
+#複数の弾の移動管理用
+bullets = []
 
 # 敵の初期位置とスピード
 enemy_width = 20
 enemy_height = 20
-enemy_spawn_interval = 5  #スポーン間隔（ミリ秒）（現在画面を埋め尽くすレベルで出現させる設定になってます）
-last_enemy_spawn_time = 0
 enemy_speed = 5
+
+#敵のスポーン間隔設定
+enemy_spawn_interval = 2000  #スポーン間隔（ミリ秒）
+last_enemy_spawn_time = 0
+
+#複数の敵の移動管理用
 enemies = []
 
 
@@ -65,37 +77,57 @@ game_clear_start_time = 0
 game_over_displayed = False
 game_clear_displayed = False
 
+#ゲームオーバーとクリア時の動作停止フラグ
 stopper = False
 
+#自機の描画
 def draw_player():
     pygame.draw.rect(window, BLUE, (player_x, player_y, player_width, player_height))
 
-def draw_bullet():
-    pygame.draw.rect(window, GREEN, (bullet_x, bullet_y, 10, 5))
+#弾の描画    
+def draw_bullet(x,y):
+    pygame.draw.rect(window, RED, (x, y, 10, 5))
 
-
+#敵の描画
 def draw_enemy(x,y):
     pygame.draw.rect(window, WHITE, (x, y, enemy_width, enemy_height))
 
-
+#スコアの描画
 def draw_score():
     score_text = font.render("Score: " + str(score), True, WHITE)
     window.blit(score_text, (10, 10))
 
+#体力バーの描画
 def draw_health():
-    health_text = font.render("Health: " + str(player_health), True, WHITE)
-    window.blit(health_text, (10, 50))
+    for i in range(player_health):
+        # バーの幅と高さを指定
+        bar_width = 30
+        bar_height = 5
+        
+        # バーの位置を計算
+        bar_x = 10 + (bar_width + 5) * i
+        bar_y = 50
+        
+        # カラーインデックスを取得
+        color_index = min(i, len(colors) - 1)
+        color = colors[color_index]
+        
+        # バーを描画
+        pygame.draw.rect(window, color, (bar_x, bar_y, bar_width, bar_height))
 
+#ゲームオーバーの描画
 def game_over():
     game_over_text = font.render("GAME OVER", True, RED)
     window.blit(game_over_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
 
+#ゲームクリアの描画
 def game_clear(): 
     clear_text = font.render("GAME CLEAR", True, YELLOW)
     score_text = font.render("Score: " + str(score), True, YELLOW)
     window.blit(clear_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
     window.blit(score_text, (WINDOW_WIDTH // 2 - 80, WINDOW_HEIGHT // 2))
 
+#ゲームのメイン処理
 while running:
     window.fill(BLACK)
 
@@ -112,30 +144,30 @@ while running:
             player_x -= 5
         if keys[pygame.K_RIGHT]:
             player_x += 5
-        if keys[pygame.K_SPACE] and bullet_x >= WINDOW_WIDTH:
+        current_time = pygame.time.get_ticks()
+        if keys[pygame.K_SPACE] and current_time - last_shoot_time > bullet_cooldown:
             bullet_x = player_x + player_width
             bullet_y = player_y
-            can_shoot = False
             last_shoot_time = pygame.time.get_ticks()
+            bullets.append([bullet_x,bullet_y])	
 
     # 自機の移動範囲を制限
-    player_x = max(0, min(player_x, WINDOW_WIDTH - player_width))
-    player_y = max(0, min(player_y, WINDOW_HEIGHT - player_height))
+    player_x = max(0, min(player_x, WINDOW_WIDTH // 2 - (player_width + 100)))
+    player_y = max(60, min(player_y, WINDOW_HEIGHT - player_height))
 
-    # 弾の移動
-    if bullet_x < WINDOW_WIDTH:
-       bullet_x += bullet_speed
-    else:
-        can_shoot = True
-    # 弾のクールダウン時間経過後、再び発射可能にする
-    current_time = pygame.time.get_ticks()
-    if not can_shoot and current_time - last_shoot_time >= bullet_cooldown:
-        can_shoot = True
+    # 弾の移動と描画
+    for bullet in bullets:
+        bullet[0] += bullet_speed
+        draw_bullet(bullet[0], bullet[1])
+        
+        # 弾が画面外に出たら削除
+        if bullet[0] + enemy_width < 0:
+            bullets.remove(bullet)
 
     # 敵の生成
     current_time = pygame.time.get_ticks()
     if current_time - last_enemy_spawn_time > enemy_spawn_interval :
-        enemy_y = random.randint(0, WINDOW_HEIGHT - enemy_height)
+        enemy_y = random.randint(60, WINDOW_HEIGHT - enemy_height)
         enemies.append([WINDOW_WIDTH - enemy_width, enemy_y])
         last_enemy_spawn_time = current_time
 
@@ -152,14 +184,15 @@ while running:
 
     # 敵と弾の衝突判定
     if bullet_x <= WINDOW_WIDTH:
-        bullet_rect = pygame.Rect(bullet_x, bullet_y, 10, 5)
-        for enemy in enemies:
-            enemy_rect = pygame.Rect(enemy[0], enemy[1], enemy_width, enemy_height)
-            if bullet_rect.colliderect(enemy_rect):
-                enemies.remove(enemy)
-                if not stopper:
-                    score +=100
-                break
+        for bullet in bullets:
+            bullet_rect = pygame.Rect(bullet[0], bullet[1], 10, 5)
+            for enemy in enemies:
+                enemy_rect = pygame.Rect(enemy[0], enemy[1], enemy_width, enemy_height)
+                if bullet_rect.colliderect(enemy_rect):
+                    enemies.remove(enemy)
+                    if not stopper:
+                        score +=100
+                    break
 
     #敵と自機の衝突判定  
     if player_health >= 1:
@@ -174,7 +207,7 @@ while running:
                     player_health -= 1
                 break         
 
-    # 自機の体力が0以下になった場合
+    # 自機の体力が0以下になった場合ゲームオーバーにする
     if player_health <= 0:
         if not game_over_displayed:
             stopper = True
@@ -203,8 +236,6 @@ while running:
 
 
     draw_player()
-    draw_bullet()
-
     draw_score()
     draw_health()
 
