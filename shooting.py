@@ -33,7 +33,7 @@ last_shoot_time = 0
 # 敵の初期位置とスピード
 enemy_width = 20
 enemy_height = 20
-enemy_spawn_interval = 5000  #スポーン間隔（ミリ秒）
+enemy_spawn_interval = 5  #スポーン間隔（ミリ秒）（現在画面を埋め尽くすレベルで出現させる設定になってます）
 last_enemy_spawn_time = 0
 enemy_speed = 5
 enemies = []
