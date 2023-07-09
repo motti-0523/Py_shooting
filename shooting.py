@@ -1,5 +1,6 @@
 import pygame
 import random
+import time
 
 # ウィンドウのサイズ
 WINDOW_WIDTH = 1000
@@ -50,7 +51,8 @@ last_enemy_spawn_time = 0
 #複数の敵の移動管理用
 enemies = []
 
-
+waiting = True
+running = False
 
 # スコア
 score = 0
@@ -63,15 +65,17 @@ clock = pygame.time.Clock()
 # フォントの設定
 font = pygame.font.Font(None, 36)
 
-# ループフラグ
-running = True
+#ループフラグ
+waiting = True
+running = False
 
-# ゲームオーバーとクリアの表示時間
+# テキストの表示時間
 display_time = 5000  # ミリ秒
 
-# ゲームオーバーとクリアの表示開始時間
+# テキストの表示開始時間
 game_over_start_time = 0
 game_clear_start_time = 0
+game_start_start_time = 0
 
 # ゲームオーバーとクリアの表示フラグ
 game_over_displayed = False
@@ -115,6 +119,8 @@ def draw_health():
         # バーを描画
         pygame.draw.rect(window, color, (bar_x, bar_y, bar_width, bar_height))
 
+
+
 #ゲームオーバーの描画
 def game_over():
     game_over_text = font.render("GAME OVER", True, RED)
@@ -127,119 +133,147 @@ def game_clear():
     window.blit(clear_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
     window.blit(score_text, (WINDOW_WIDTH // 2 - 80, WINDOW_HEIGHT // 2))
 
-#ゲームのメイン処理
-while running:
-    window.fill(BLACK)
+def start_menu():
+    start_text = font.render("Press ENTER to START", True, WHITE)
+    end_text = font.render("Press Esc to EXIT", True, WHITE)
+    window.blit(start_text, (WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT // 2))
+    window.blit(end_text, (WINDOW_WIDTH - 250, WINDOW_HEIGHT - 50))
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-    if not stopper:
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_UP]:
-            player_y -= 5
-        if keys[pygame.K_DOWN]:
-            player_y += 5
-        if keys[pygame.K_LEFT]:
-            player_x -= 5
-        if keys[pygame.K_RIGHT]:
-            player_x += 5
-        current_time = pygame.time.get_ticks()
-        if keys[pygame.K_SPACE] and current_time - last_shoot_time > bullet_cooldown:
-            bullet_x = player_x + player_width
-            bullet_y = player_y
-            last_shoot_time = pygame.time.get_ticks()
-            bullets.append([bullet_x,bullet_y])	
+def start_game():
+    game_start_text = font.render("GAME START", True, WHITE)
+    window.blit(game_start_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
 
-    # 自機の移動範囲を制限
-    player_x = max(0, min(player_x, WINDOW_WIDTH // 2 - (player_width + 100)))
-    player_y = max(60, min(player_y, WINDOW_HEIGHT - player_height))
+def process_for_seconds(seconds, game_function):
+    start_time = time.time()
+    while time.time() - start_time < seconds:
+        window.fill(BLACK)
+        game_function()
+        pygame.display.update()
 
-    # 弾の移動と描画
-    for bullet in bullets:
-        bullet[0] += bullet_speed
-        draw_bullet(bullet[0], bullet[1])
-        
-        # 弾が画面外に出たら削除
-        if bullet[0] + enemy_width < 0:
-            bullets.remove(bullet)
+while True:
 
-    # 敵の生成
-    current_time = pygame.time.get_ticks()
-    if current_time - last_enemy_spawn_time > enemy_spawn_interval :
-        enemy_y = random.randint(60, WINDOW_HEIGHT - enemy_height)
-        enemies.append([WINDOW_WIDTH - enemy_width, enemy_y])
-        last_enemy_spawn_time = current_time
+    # Pless ENTER to STARTの画面を表示
+    while waiting:
+        window.fill(BLACK)
+        start_menu()
+        pygame.display.update()
 
-    # 敵の移動と描画
-    for enemy in enemies:
-        enemy[0] -= enemy_speed
-        draw_enemy(enemy[0], enemy[1])
-        
-        # 敵が画面外に出たら削除
-        if enemy[0] + enemy_width < 0:
-            enemies.remove(enemy)
-            if not stopper:
-                score -= 50
+        for event in pygame.event.get():
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    process_for_seconds(3, start_game)
+                    running = True
+                    waiting = False
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    exit()
 
-    # 敵と弾の衝突判定
-    if bullet_x <= WINDOW_WIDTH:
+
+
+    #ゲームのメイン処理
+    while running:
+        window.fill(BLACK)
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+        if not stopper:
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_UP]:
+                player_y -= 5
+            if keys[pygame.K_DOWN]:
+                player_y += 5
+            if keys[pygame.K_LEFT]:
+                player_x -= 5
+            if keys[pygame.K_RIGHT]:
+                player_x += 5
+            current_time = pygame.time.get_ticks()
+            if keys[pygame.K_SPACE] and current_time - last_shoot_time > bullet_cooldown:
+                bullet_x = player_x + player_width
+                bullet_y = player_y
+                last_shoot_time = pygame.time.get_ticks()
+                bullets.append([bullet_x,bullet_y])	
+
+        # 自機の移動範囲を制限
+        player_x = max(0, min(player_x, WINDOW_WIDTH // 2 - (player_width + 100)))
+        player_y = max(60, min(player_y, WINDOW_HEIGHT - player_height))
+
+        # 弾の移動と描画
         for bullet in bullets:
-            bullet_rect = pygame.Rect(bullet[0], bullet[1], 10, 5)
-            for enemy in enemies:
-                enemy_rect = pygame.Rect(enemy[0], enemy[1], enemy_width, enemy_height)
-                if bullet_rect.colliderect(enemy_rect):
-                    enemies.remove(enemy)
-                    if not stopper:
-                        score +=100
-                    break
+            bullet[0] += bullet_speed
+            draw_bullet(bullet[0], bullet[1])
+        
+            # 弾が画面外に出たら削除
+            if bullet[0] + enemy_width < 0:
+                bullets.remove(bullet)
 
-    #敵と自機の衝突判定  
-    if player_health >= 1:
-        player_rect = pygame.Rect(player_x, player_y, 20, 20)
+        # 敵の生成
+        current_time = pygame.time.get_ticks()
+        if current_time - last_enemy_spawn_time > enemy_spawn_interval :
+            enemy_y = random.randint(60, WINDOW_HEIGHT - enemy_height)
+            enemies.append([WINDOW_WIDTH - enemy_width, enemy_y])
+            last_enemy_spawn_time = current_time
+
+        # 敵の移動と描画
         for enemy in enemies:
-            enemy_rect = pygame.Rect(enemy[0], enemy[1], enemy_width, enemy_height)
-            if player_rect.colliderect(enemy_rect):
-                
+            enemy[0] -= enemy_speed
+            draw_enemy(enemy[0], enemy[1])
+        
+            # 敵が画面外に出たら削除
+            if enemy[0] + enemy_width < 0:
                 enemies.remove(enemy)
                 if not stopper:
-                    score -= 100
-                    player_health -= 1
-                break         
+                    score -= 50
 
-    # 自機の体力が0以下になった場合ゲームオーバーにする
-    if player_health <= 0:
-        if not game_over_displayed:
-            stopper = True
-            if game_over_start_time == 0:  # 初めてゲームオーバーになった場合のみ更新する
-                game_over_start_time = pygame.time.get_ticks()
-            
-            current_time = pygame.time.get_ticks()
-            if current_time - game_over_start_time < display_time:
-                game_over()
-            else:
-                game_over_displayed = True
+        # 敵と弾の衝突判定
+        if bullet_x <= WINDOW_WIDTH:
+            for bullet in bullets:
+                bullet_rect = pygame.Rect(bullet[0], bullet[1], 10, 5)
+                for enemy in enemies:
+                    enemy_rect = pygame.Rect(enemy[0], enemy[1], enemy_width, enemy_height)
+                    if bullet_rect.colliderect(enemy_rect):
+                        enemies.remove(enemy)
+                        if not stopper:
+                            score +=100
+                        break
+
+        #敵と自機の衝突判定  
+        if player_health >= 1:
+            player_rect = pygame.Rect(player_x, player_y, 20, 20)
+            for enemy in enemies:
+                enemy_rect = pygame.Rect(enemy[0], enemy[1], enemy_width, enemy_height)
+                if player_rect.colliderect(enemy_rect):
+                
+                    enemies.remove(enemy)
+                    if not stopper:
+                        score -= 100
+                        player_health -= 1
+                    break         
+
+        # 自機の体力が0以下になった場合ゲームオーバーにする
+        if player_health <= 0:
+            if not game_over_displayed:
+                stopper = True
+                process_for_seconds(5, game_over)
                 running = False
+                waiting = True
 
-    # クリア条件
-    if score >= 3000:
-        if not game_clear_displayed:
-            stopper = True
-            if game_clear_start_time == 0:  # 初めてクリアになった場合のみ更新する
-                game_clear_start_time = pygame.time.get_ticks()
-            current_time = pygame.time.get_ticks()
-            if current_time - game_clear_start_time < display_time:
-                game_clear()
-            else:
-                game_clear_displayed = True
+        # クリア条件
+        if score >= 3000:
+            if not game_over_displayed:
+                stopper = True
+                process_for_seconds(5, game_clear)
                 running = False
+                waiting = True
 
 
-    draw_player()
-    draw_score()
-    draw_health()
+        draw_player()
+        draw_score()
+        draw_health()
 
-    pygame.display.update()
-    clock.tick(60)
+        pygame.display.update()
+        clock.tick(60)
 
-pygame.quit()
+   
+
+
