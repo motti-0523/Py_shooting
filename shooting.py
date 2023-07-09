@@ -51,6 +51,7 @@ last_enemy_spawn_time = 0
 #複数の敵の移動管理用
 enemies = []
 
+#ループフラグ
 waiting = True
 running = False
 
@@ -69,17 +70,7 @@ font = pygame.font.Font(None, 36)
 waiting = True
 running = False
 
-# テキストの表示時間
-display_time = 5000  # ミリ秒
 
-# テキストの表示開始時間
-game_over_start_time = 0
-game_clear_start_time = 0
-game_start_start_time = 0
-
-# ゲームオーバーとクリアの表示フラグ
-game_over_displayed = False
-game_clear_displayed = False
 
 #ゲームオーバーとクリア時の動作停止フラグ
 stopper = False
@@ -133,16 +124,19 @@ def game_clear():
     window.blit(clear_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
     window.blit(score_text, (WINDOW_WIDTH // 2 - 80, WINDOW_HEIGHT // 2))
 
+#スタートメニューの描画    
 def start_menu():
     start_text = font.render("Press ENTER to START", True, WHITE)
     end_text = font.render("Press Esc to EXIT", True, WHITE)
     window.blit(start_text, (WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT // 2))
     window.blit(end_text, (WINDOW_WIDTH - 250, WINDOW_HEIGHT - 50))
 
+#GAME STARTの描画
 def start_game():
     game_start_text = font.render("GAME START", True, WHITE)
     window.blit(game_start_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
 
+#テキストの表示時間管理
 def process_for_seconds(seconds, game_function):
     start_time = time.time()
     while time.time() - start_time < seconds:
@@ -150,6 +144,7 @@ def process_for_seconds(seconds, game_function):
         game_function()
         pygame.display.update()
 
+#システム全体のループ
 while True:
 
     # Pless ENTER to STARTの画面を表示
@@ -252,19 +247,17 @@ while True:
 
         # 自機の体力が0以下になった場合ゲームオーバーにする
         if player_health <= 0:
-            if not game_over_displayed:
-                stopper = True
-                process_for_seconds(5, game_over)
-                running = False
-                waiting = True
+            stopper = True
+            process_for_seconds(5, game_over)
+            running = False
+            waiting = True
 
-        # クリア条件
+        # スコアが3000を超えた場合ゲームクリアにする
         if score >= 3000:
-            if not game_over_displayed:
-                stopper = True
-                process_for_seconds(5, game_clear)
-                running = False
-                waiting = True
+            stopper = True
+            process_for_seconds(5, game_clear)
+            running = False
+            waiting = True
 
 
         draw_player()
