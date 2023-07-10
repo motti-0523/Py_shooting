@@ -29,7 +29,7 @@ player_health = 5 #自機の体力
 
 # 弾の初期位置とスピード
 bullet_x = player_x + player_width
-bullet_y = player_y
+bullet_y = player_y 
 bullet_speed = 5
 
 #弾の発射間隔設定
@@ -70,10 +70,8 @@ font = pygame.font.Font(None, 36)
 waiting = True
 running = False
 
-
-
-#ゲームオーバーとクリア時の動作停止フラグ
-stopper = False
+#クリアフラグのせってい
+clear_count = 0
 
 #自機の描画
 def draw_player():
@@ -156,7 +154,7 @@ while True:
         for event in pygame.event.get():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:
-                    process_for_seconds(3, start_game)
+                    process_for_seconds(2, start_game)
                     running = True
                     waiting = False
                 if event.key == pygame.K_ESCAPE:
@@ -168,26 +166,32 @@ while True:
     #ゲームのメイン処理
     while running:
         window.fill(BLACK)
+        
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        if not stopper:
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_UP]:
-                player_y -= 5
-            if keys[pygame.K_DOWN]:
-                player_y += 5
-            if keys[pygame.K_LEFT]:
-                player_x -= 5
-            if keys[pygame.K_RIGHT]:
-                player_x += 5
-            current_time = pygame.time.get_ticks()
-            if keys[pygame.K_SPACE] and current_time - last_shoot_time > bullet_cooldown:
-                bullet_x = player_x + player_width
-                bullet_y = player_y
-                last_shoot_time = pygame.time.get_ticks()
-                bullets.append([bullet_x,bullet_y])	
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                        pygame.quit()
+                        exit()
+
+ 
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_UP]:
+            player_y -= 5
+        if keys[pygame.K_DOWN]:
+            player_y += 5
+        if keys[pygame.K_LEFT]:
+            player_x -= 5
+        if keys[pygame.K_RIGHT]:
+            player_x += 5
+        current_time = pygame.time.get_ticks()
+        if keys[pygame.K_SPACE] and current_time - last_shoot_time > bullet_cooldown:
+            bullet_x = player_x + player_width
+            bullet_y = player_y
+            last_shoot_time = pygame.time.get_ticks()
+            bullets.append([bullet_x,bullet_y])	
 
         # 自機の移動範囲を制限
         player_x = max(0, min(player_x, WINDOW_WIDTH // 2 - (player_width + 100)))
@@ -217,8 +221,7 @@ while True:
             # 敵が画面外に出たら削除
             if enemy[0] + enemy_width < 0:
                 enemies.remove(enemy)
-                if not stopper:
-                    score -= 50
+                score -= 50
 
         # 敵と弾の衝突判定
         if bullet_x <= WINDOW_WIDTH:
@@ -228,8 +231,8 @@ while True:
                     enemy_rect = pygame.Rect(enemy[0], enemy[1], enemy_width, enemy_height)
                     if bullet_rect.colliderect(enemy_rect):
                         enemies.remove(enemy)
-                        if not stopper:
-                            score +=100
+                        clear_count += 1
+                        score +=1000
                         break
 
         #敵と自機の衝突判定  
@@ -240,21 +243,19 @@ while True:
                 if player_rect.colliderect(enemy_rect):
                 
                     enemies.remove(enemy)
-                    if not stopper:
-                        score -= 100
-                        player_health -= 1
+
+                    score -= 100
+                    player_health -= 1
                     break         
 
         # 自機の体力が0以下になった場合ゲームオーバーにする
         if player_health <= 0:
-            stopper = True
             process_for_seconds(5, game_over)
             running = False
             waiting = True
 
         # スコアが3000を超えた場合ゲームクリアにする
-        if score >= 3000:
-            stopper = True
+        if clear_count >= 10:
             process_for_seconds(5, game_clear)
             running = False
             waiting = True
