@@ -228,7 +228,7 @@ while True:
         # 敵と弾の衝突判定
         if len(bullets) != 0:
             for bullet in bullets:
-                bullet_rect = pygame.Rect(bullet[0], bullet[1], 10, 5)
+                bullet_rect = pygame.Rect(bullet[0], bullet[1], bullet_width, bullet_height)
                 for enemy in enemies:
                     enemy_rect = pygame.Rect(enemy[0], enemy[1], enemy_width, enemy_height)
                     if bullet_rect.colliderect(enemy_rect):
@@ -239,7 +239,7 @@ while True:
 
         #敵と自機の衝突判定  
         if player_health >= 1:
-            player_rect = pygame.Rect(player_x, player_y, 20, 20)
+            player_rect = pygame.Rect(player_x, player_y, player_width, player_height)
             for enemy in enemies:
                 enemy_rect = pygame.Rect(enemy[0], enemy[1], enemy_width, enemy_height)
                 if player_rect.colliderect(enemy_rect):
