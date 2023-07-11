@@ -16,9 +16,21 @@ GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 ORANGE = (255,165,0)
 GREENYELLOW = (173,255,47)
+GOLD = (255,215,0)
 
 #カラーインデックスの定義
 colors = [RED, ORANGE, YELLOW, GREENYELLOW , GREEN]
+
+class position:
+	def __init__(self,x,y,width,height,color):
+		self.x = x
+		self.y = y
+		self.width = width
+		self.height = height
+		self.color = color
+
+	def draw(self, window):
+		pygame.draw.rect(window, self.color, (self.x, self.y, self.width, self.height))
 
 # 自機の設定
 player_x = 50 #初期位置のx座標
@@ -27,9 +39,9 @@ player_width = 20 #自機の幅
 player_height = 20 #自機の高さ
 player_health = 5 #自機の体力
 
-# 弾の初期位置とスピード
-bullet_x = player_x + player_width
-bullet_y = player_y 
+# 弾の設定
+bullet_width = 10
+bullet_height = 5
 bullet_speed = 5
 
 #弾の発射間隔設定
@@ -55,9 +67,6 @@ enemies = []
 waiting = True
 running = False
 
-# スコア
-score = 0
-
 # 初期化
 pygame.init()
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
@@ -69,21 +78,6 @@ font = pygame.font.Font(None, 36)
 #ループフラグ
 waiting = True
 running = False
-
-#クリアフラグのせってい
-clear_count = 0
-
-#自機の描画
-def draw_player():
-    pygame.draw.rect(window, BLUE, (player_x, player_y, player_width, player_height))
-
-#弾の描画    
-def draw_bullet(x,y):
-    pygame.draw.rect(window, RED, (x, y, 10, 5))
-
-#敵の描画
-def draw_enemy(x,y):
-    pygame.draw.rect(window, WHITE, (x, y, enemy_width, enemy_height))
 
 #スコアの描画
 def draw_score():
@@ -104,9 +98,11 @@ def draw_health():
         # カラーインデックスを取得
         color_index = min(i, len(colors) - 1)
         color = colors[color_index]
-        
+
+        drawhealth = position(bar_x, bar_y, bar_width, bar_height, color)
+
         # バーを描画
-        pygame.draw.rect(window, color, (bar_x, bar_y, bar_width, bar_height))
+        drawhealth.draw(window)
 
 
 
@@ -117,8 +113,8 @@ def game_over():
 
 #ゲームクリアの描画
 def game_clear(): 
-    clear_text = font.render("GAME CLEAR", True, YELLOW)
-    score_text = font.render("Score: " + str(score), True, YELLOW)
+    clear_text = font.render("GAME CLEAR", True, GOLD)
+    score_text = font.render("Score: " + str(score), True, GOLD)
     window.blit(clear_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
     window.blit(score_text, (WINDOW_WIDTH // 2 - 80, WINDOW_HEIGHT // 2))
 
@@ -160,7 +156,12 @@ while True:
                 if event.key == pygame.K_ESCAPE:
                     pygame.quit()
                     exit()
+        
+    #クリアフラグの設定
+    clear_count = 0
 
+    # スコア
+    score = 0
 
 
     #ゲームのメイン処理
@@ -200,8 +201,8 @@ while True:
         # 弾の移動と描画
         for bullet in bullets:
             bullet[0] += bullet_speed
-            draw_bullet(bullet[0], bullet[1])
-        
+            drawbullet = position(bullet[0], bullet[1], bullet_width, bullet_height, RED)
+            drawbullet.draw(window)
             # 弾が画面外に出たら削除
             if bullet[0] + enemy_width < 0:
                 bullets.remove(bullet)
@@ -216,15 +217,16 @@ while True:
         # 敵の移動と描画
         for enemy in enemies:
             enemy[0] -= enemy_speed
-            draw_enemy(enemy[0], enemy[1])
+            drawenemy = position(enemy[0], enemy[1], enemy_width, enemy_height, WHITE)
+            drawenemy.draw(window)
         
             # 敵が画面外に出たら削除
             if enemy[0] + enemy_width < 0:
                 enemies.remove(enemy)
-                score -= 50
+                score -= 100
 
         # 敵と弾の衝突判定
-        if bullet_x <= WINDOW_WIDTH:
+        if len(bullets) != 0:
             for bullet in bullets:
                 bullet_rect = pygame.Rect(bullet[0], bullet[1], 10, 5)
                 for enemy in enemies:
@@ -244,7 +246,7 @@ while True:
                 
                     enemies.remove(enemy)
 
-                    score -= 100
+                    score -= 500
                     player_health -= 1
                     break         
 
@@ -254,20 +256,17 @@ while True:
             running = False
             waiting = True
 
-        # スコアが3000を超えた場合ゲームクリアにする
+        # 敵を10体倒した場合ゲームクリアにする
         if clear_count >= 10:
             process_for_seconds(5, game_clear)
             running = False
             waiting = True
 
-
-        draw_player()
+        drawplayer = position(player_x, player_y, player_width, player_height, BLUE)
+        drawplayer.draw(window)
         draw_score()
         draw_health()
 
         pygame.display.update()
         clock.tick(60)
-
-   
-
 
