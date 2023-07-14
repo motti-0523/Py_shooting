@@ -36,7 +36,7 @@ class position:
 #難易度dictの定義
 options = [
     {'name': 'Easy', 'difficulty': 'Easy Mode', 'speed': 2},
-    {'name': 'Normal', 'difficulty': 'Medium Mode', 'speed': 5},
+    {'name': 'Normal', 'difficulty': 'Normal Mode', 'speed': 5},
     {'name': 'Hard', 'difficulty': 'Hard Mode', 'speed': 7}
 ]
 
