@@ -48,6 +48,7 @@ game_count = 0
 
 #スコアの定義
 score = 0
+high_score = 0
 
 # 自機の設定
 player_x = 50 #初期位置のx座標
@@ -124,11 +125,15 @@ def draw_health():
 
 
 #ゲームオーバーの描画
-def game_over():
+def game_over(color):
     game_over_text = font.render("GAME OVER", True, RED)
     score_text = font.render("Score: " + str(score), True, GOLD)
-    window.blit(score_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
-    window.blit(game_over_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
+    high_score_text = font.render("High Score: " + str(high_score), True, GOLD)
+    new_record_text = font.render("New Record " , True, color)
+    window.blit(score_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
+    window.blit(game_over_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 100))
+    window.blit(high_score_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 ))
+    window.blit(new_record_text, (WINDOW_WIDTH // 2 - 250, WINDOW_HEIGHT // 2 ))
 
 #スタートメニューの描画    
 def start_menu():
@@ -148,17 +153,19 @@ def draw_options():
         window.blit(text, text_rect)
 
 #GAME STARTの描画
-def start_game():
+def start_game(diff):
     game_start_text = font.render("GAME START", True, WHITE)
     window.blit(game_start_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
+    difficulty_text = font.render("Difficulty :" + diff, True, WHITE)
+    window.blit(difficulty_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
 
 
 #テキストの表示時間管理
-def process_for_seconds(seconds, game_function):
+def process_for_seconds(seconds, game_function, option):
     start_time = time.time()
     while time.time() - start_time < seconds:
         window.fill(BLACK)
-        game_function()
+        game_function(option)
         pygame.display.update()
 
 #システム全体のループ
@@ -187,7 +194,7 @@ while True:
                 elif event.key == pygame.K_RETURN:
                     selected_difficulty = options[selected_option]['difficulty']
                     enemy_speed = options[selected_option]['speed']
-                    process_for_seconds(2,start_game)
+                    process_for_seconds(2, start_game, selected_difficulty)
                     running = True
                     waiting = False
                 elif event.key == pygame.K_ESCAPE:
@@ -295,8 +302,11 @@ while True:
         # 自機の体力が0以下になった場合ゲームオーバーにする
         if player_health <= 0:
             running = False
-            process_for_seconds(5,game_over)
-            
+            if high_score < score:
+                high_score = score
+                process_for_seconds(5, game_over, YELLOW)
+            else :
+                process_for_seconds(5, game_over, BLACK)
            
             #ゲーム管理フラグのリセット
             game_count = 0
