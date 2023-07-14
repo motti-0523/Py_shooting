@@ -17,6 +17,7 @@ BLUE = (0, 0, 255)
 ORANGE = (255,165,0)
 GREENYELLOW = (173,255,47)
 GOLD = (255,215,0)
+GRAY =(128,128,128)
 
 #カラーインデックスの定義
 colors = [RED, ORANGE, YELLOW, GREENYELLOW , GREEN]
@@ -32,12 +33,29 @@ class position:
 	def draw(self, window):
 		pygame.draw.rect(window, self.color, (self.x, self.y, self.width, self.height))
 
+#難易度dictの定義
+options = [
+    {'name': 'Easy', 'difficulty': 'Easy Mode', 'speed': 2},
+    {'name': 'Normal', 'difficulty': 'Medium Mode', 'speed': 5},
+    {'name': 'Hard', 'difficulty': 'Hard Mode', 'speed': 7}
+]
+
+#選択フラグ
+selected_option = 0
+
+#ゲーム管理フラグの設定
+game_count = 0
+
+#スコアの定義
+score = 0
+
 # 自機の設定
 player_x = 50 #初期位置のx座標
 player_y = WINDOW_HEIGHT // 2 #初期位置のy座標
 player_width = 20 #自機の幅
 player_height = 20 #自機の高さ
-player_health = 5 #自機の体力
+player_health = 1 #自機の体力
+
 
 # 弾の設定
 bullet_width = 10
@@ -51,10 +69,9 @@ last_shoot_time = 0
 #複数の弾の移動管理用
 bullets = []
 
-# 敵の初期位置とスピード
+# 敵の幅と高さ
 enemy_width = 20
 enemy_height = 20
-enemy_speed = 5
 
 #敵のスポーン間隔設定
 enemy_spawn_interval = 2000  #スポーン間隔（ミリ秒）
@@ -109,14 +126,9 @@ def draw_health():
 #ゲームオーバーの描画
 def game_over():
     game_over_text = font.render("GAME OVER", True, RED)
-    window.blit(game_over_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
-
-#ゲームクリアの描画
-def game_clear(): 
-    clear_text = font.render("GAME CLEAR", True, GOLD)
     score_text = font.render("Score: " + str(score), True, GOLD)
-    window.blit(clear_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
-    window.blit(score_text, (WINDOW_WIDTH // 2 - 80, WINDOW_HEIGHT // 2))
+    window.blit(score_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
+    window.blit(game_over_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
 
 #スタートメニューの描画    
 def start_menu():
@@ -125,10 +137,21 @@ def start_menu():
     window.blit(start_text, (WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT // 2))
     window.blit(end_text, (WINDOW_WIDTH - 250, WINDOW_HEIGHT - 50))
 
+
+# 選択肢の描画
+def draw_options():
+    for i, option in enumerate(options):
+        text = font.render(option['name'], True, WHITE if i == selected_option else GRAY)
+        text_rect = text.get_rect()
+        text_rect.center = (WINDOW_WIDTH // 2, 100 + i * 50)
+        pygame.draw.rect(window, WHITE, (text_rect.left - 5, text_rect.top - 5, text_rect.width + 10, text_rect.height + 10), 2)
+        window.blit(text, text_rect)
+
 #GAME STARTの描画
 def start_game():
     game_start_text = font.render("GAME START", True, WHITE)
     window.blit(game_start_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
+
 
 #テキストの表示時間管理
 def process_for_seconds(seconds, game_function):
@@ -141,33 +164,43 @@ def process_for_seconds(seconds, game_function):
 #システム全体のループ
 while True:
 
+    
+
     # Pless ENTER to STARTの画面を表示
     while waiting:
         window.fill(BLACK)
+        draw_options()
         start_menu()
         pygame.display.update()
 
         for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:
-                    process_for_seconds(2, start_game)
+            if event.type == pygame.QUIT:
+                running = False
+                waiting = False
+                pygame.quit()
+                exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    selected_option = (selected_option - 1) % len(options)
+                elif event.key == pygame.K_DOWN:
+                    selected_option = (selected_option + 1) % len(options)
+                elif event.key == pygame.K_RETURN:
+                    selected_difficulty = options[selected_option]['difficulty']
+                    enemy_speed = options[selected_option]['speed']
+                    process_for_seconds(2,start_game)
                     running = True
                     waiting = False
-                if event.key == pygame.K_ESCAPE:
+                elif event.key == pygame.K_ESCAPE:
+                    running = False
+                    waiting = False
                     pygame.quit()
                     exit()
         
-    #クリアフラグの設定
-    clear_count = 0
-
-    # スコア
-    score = 0
 
 
     #ゲームのメイン処理
     while running:
         window.fill(BLACK)
-        
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -198,6 +231,11 @@ while True:
         player_x = max(0, min(player_x, WINDOW_WIDTH // 2 - (player_width + 100)))
         player_y = max(60, min(player_y, WINDOW_HEIGHT - player_height))
 
+        drawplayer = position(player_x, player_y, player_width, player_height, BLUE)
+        drawplayer.draw(window)
+        draw_score()
+        draw_health()
+
         # 弾の移動と描画
         for bullet in bullets:
             bullet[0] += bullet_speed
@@ -224,6 +262,8 @@ while True:
             if enemy[0] + enemy_width < 0:
                 enemies.remove(enemy)
                 score -= 100
+                if score <= 0:
+                    score = 0
 
         # 敵と弾の衝突判定
         if len(bullets) != 0:
@@ -233,7 +273,7 @@ while True:
                     enemy_rect = pygame.Rect(enemy[0], enemy[1], enemy_width, enemy_height)
                     if bullet_rect.colliderect(enemy_rect):
                         enemies.remove(enemy)
-                        clear_count += 1
+                        game_count += 1
                         score +=1000
                         break
 
@@ -247,25 +287,34 @@ while True:
                     enemies.remove(enemy)
 
                     score -= 500
+                    if score <= 0:
+                        score = 0
                     player_health -= 1
                     break         
 
         # 自機の体力が0以下になった場合ゲームオーバーにする
         if player_health <= 0:
-            process_for_seconds(5, game_over)
             running = False
+            process_for_seconds(5,game_over)
+            
+           
+            #ゲーム管理フラグのリセット
+            game_count = 0
+
+            # スコアのリセット
+            score = 0
+
+            player_health = 1 #自機の体力のリセット
+
+            #弾リストのリセット
+            bullets.clear()
+
+            #敵リストのリセット
+            enemies.clear()
+
             waiting = True
 
-        # 敵を10体倒した場合ゲームクリアにする
-        if clear_count >= 10:
-            process_for_seconds(5, game_clear)
-            running = False
-            waiting = True
-
-        drawplayer = position(player_x, player_y, player_width, player_height, BLUE)
-        drawplayer.draw(window)
-        draw_score()
-        draw_health()
+            
 
         pygame.display.update()
         clock.tick(60)
