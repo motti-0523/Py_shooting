@@ -22,22 +22,40 @@ GRAY =(128,128,128)
 #カラーインデックスの定義
 colors = [RED, ORANGE, YELLOW, GREENYELLOW , GREEN]
 
+# high_scoreを保存するデータのファイルパス
+high_score_file = "high_score.txt"
+
+# high_scoreの読み込み
+try:
+    with open(high_score_file, "r") as file:
+        high_score = int(file.read())
+except (FileNotFoundError, ValueError):
+    high_score = 0
+    # ファイルが存在しないか、ファイルの内容がintに変換できない場合、ファイルを作成
+    with open(high_score_file, "w") as file:
+        file.write(str(high_score))
+
 class position:
-	def __init__(self,x,y,width,height,color):
+	def __init__(self,x,y,image):
 		self.x = x
 		self.y = y
-		self.width = width
-		self.height = height
-		self.color = color
+		
+		self.image = image
 
 	def draw(self, window):
-		pygame.draw.rect(window, self.color, (self.x, self.y, self.width, self.height))
+		window.blit(self.image, (self.x, self.y))
+
+# 進行方向反転の変数を追加
+player_direction = 1
+reverse_time = 0
+reverse_flag = 0
 
 #難易度dictの定義
 options = [
-    {'name': 'Easy', 'difficulty': 'Easy Mode', 'speed': 2},
-    {'name': 'Normal', 'difficulty': 'Normal Mode', 'speed': 5},
-    {'name': 'Hard', 'difficulty': 'Hard Mode', 'speed': 7}
+    {'name': 'Easy', 'difficulty': 'Easy Mode', 'speed': 2, 'get_score':600, 'reverse':1},
+    {'name': 'Normal', 'difficulty': 'Normal Mode', 'speed': 5, 'get_score':800, 'reverse':1},
+    {'name': 'Hard', 'difficulty': 'Hard Mode', 'speed': 7, 'get_score':1000, 'reverse':1},
+    {'name': 'Very Hard', 'difficulty': 'Very Hard Mode', 'speed': 7, 'get_score':1500, 'reverse':-1}
 ]
 
 #選択フラグ
@@ -48,19 +66,30 @@ game_count = 0
 
 #スコアの定義
 score = 0
-high_score = 0
+# high_scoreを保存するデータのファイルパス
+high_score_file = "high_score.txt"
+
+# high_scoreの読み込み
+try:
+    with open(high_score_file, "r") as file:
+        high_score = int(file.read())
+except (FileNotFoundError, ValueError):
+    high_score = 0
+    # ファイルが存在しないか、ファイルの内容がintに変換できない場合、ファイルを作成
+    with open(high_score_file, "w") as file:
+        file.write(str(high_score))
 
 # 自機の設定
 player_x = 50 #初期位置のx座標
 player_y = WINDOW_HEIGHT // 2 #初期位置のy座標
-player_width = 20 #自機の幅
-player_height = 20 #自機の高さ
+player_width = 80 #自機の幅
+player_height = 40 #自機の高さ
 player_health = 1 #自機の体力
 
 
 # 弾の設定
-bullet_width = 10
-bullet_height = 5
+bullet_width = 30
+bullet_height = 10
 bullet_speed = 5
 
 #弾の発射間隔設定
@@ -71,8 +100,8 @@ last_shoot_time = 0
 bullets = []
 
 # 敵の幅と高さ
-enemy_width = 20
-enemy_height = 20
+enemy_width = 80
+enemy_height = 40
 
 #敵のスポーン間隔設定
 enemy_spawn_interval = 2000  #スポーン間隔（ミリ秒）
@@ -80,6 +109,7 @@ last_enemy_spawn_time = 0
 
 #複数の敵の移動管理用
 enemies = []
+
 
 #ループフラグ
 waiting = True
@@ -89,6 +119,27 @@ running = False
 pygame.init()
 window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 clock = pygame.time.Clock()
+
+#画像の余白を透明に
+# プレイヤー画像の処理
+player_image = pygame.image.load('player1.jpeg').convert()
+colorkey = player_image.get_at((0, 0))
+player_image.set_colorkey(colorkey, pygame.RLEACCEL)
+
+# 敵画像の処理
+enemy_image = pygame.image.load('enemy1.jpeg').convert()
+colorkey = enemy_image.get_at((0, 0))
+enemy_image.set_colorkey(colorkey, pygame.RLEACCEL)
+
+#弾画像の処理
+bullet_image = pygame.image.load('bullet1.jpeg').convert()
+colorkey = bullet_image.get_at((0, 0))
+bullet_image.set_colorkey(colorkey, pygame.RLEACCEL)
+
+# 画像を適切なサイズにリサイズ
+player_image = pygame.transform.scale(player_image, (player_width, player_height))
+enemy_image = pygame.transform.scale(enemy_image, (enemy_width, enemy_height))
+bullet_image = pygame.transform.scale(bullet_image, (bullet_width, bullet_height))
 
 # フォントの設定
 font = pygame.font.Font(None, 36)
@@ -117,23 +168,33 @@ def draw_health():
         color_index = min(i, len(colors) - 1)
         color = colors[color_index]
 
-        drawhealth = position(bar_x, bar_y, bar_width, bar_height, color)
-
-        # バーを描画
-        drawhealth.draw(window)
+        # 棒を描画
+        pygame.draw.rect(window, color, (bar_x, bar_y, bar_width, bar_height))
 
 
 
-#ゲームオーバーの描画
-def game_over(color):
-    game_over_text = font.render("GAME OVER", True, RED)
+# ゲームオーバーの描画
+def game_over(score, high_score):
+    flag = False
+    if high_score < score:
+        high_score = score
+        flag = True
+        # high_scoreをファイルに保存
+        with open(high_score_file, "w") as file:
+            file.write(str(high_score))
+    game_over_text = font.render("GAME OVER", True, RED)    
     score_text = font.render("Score: " + str(score), True, GOLD)
     high_score_text = font.render("High Score: " + str(high_score), True, GOLD)
-    new_record_text = font.render("New Record " , True, color)
+    # 新記録がある場合のみ "New Record" を描画
+    if flag:
+        new_record_text = font.render("New Record", True, YELLOW)
+        window.blit(new_record_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 + 50))
     window.blit(score_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
     window.blit(game_over_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 100))
-    window.blit(high_score_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 ))
-    window.blit(new_record_text, (WINDOW_WIDTH // 2 - 250, WINDOW_HEIGHT // 2 ))
+    window.blit(high_score_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
+
+    
+    
 
 #スタートメニューの描画    
 def start_menu():
@@ -153,19 +214,25 @@ def draw_options():
         window.blit(text, text_rect)
 
 #GAME STARTの描画
-def start_game(diff):
+def start_game(diff, speed, score, judge):
+    if judge == 1:
+        flag = "false"
+    elif judge == -1:
+        flag = "true"
     game_start_text = font.render("GAME START", True, WHITE)
-    window.blit(game_start_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2))
+    window.blit(game_start_text, (WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT // 2))
     difficulty_text = font.render("Difficulty :" + diff, True, WHITE)
-    window.blit(difficulty_text, (WINDOW_WIDTH // 2 - 100, WINDOW_HEIGHT // 2 - 50))
+    window.blit(difficulty_text, (WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT // 2 - 50))
+    detail_text = font.render("Enemy speed :" + str(speed) +  " Get Score:" + str(score) +  " Reverse:" +flag , True, WHITE)
+    window.blit(detail_text, (WINDOW_WIDTH // 2 - 150, WINDOW_HEIGHT // 2 - 100))
 
 
 #テキストの表示時間管理
-def process_for_seconds(seconds, game_function, option):
+def process_for_seconds(seconds, game_function, *options):
     start_time = time.time()
     while time.time() - start_time < seconds:
         window.fill(BLACK)
-        game_function(option)
+        game_function(*options)
         pygame.display.update()
 
 #システム全体のループ
@@ -194,7 +261,9 @@ while True:
                 elif event.key == pygame.K_RETURN:
                     selected_difficulty = options[selected_option]['difficulty']
                     enemy_speed = options[selected_option]['speed']
-                    process_for_seconds(2, start_game, selected_difficulty)
+                    point = options[selected_option]['get_score']
+                    reverse_flag = options[selected_option]['reverse']
+                    process_for_seconds(2, start_game, selected_difficulty, enemy_speed, point, reverse_flag)
                     running = True
                     waiting = False
                 elif event.key == pygame.K_ESCAPE:
@@ -219,18 +288,32 @@ while True:
 
  
         keys = pygame.key.get_pressed()
+        if reverse_flag == -1:
+            # 進行方向の反転時間を減らす
+            if reverse_time > 0:
+                count_text = font.render(str(reverse_time), True, RED)
+                window.blit(count_text, (WINDOW_WIDTH // 2 ,  30 ))
+                reverse_time -= 1
+
+            # 反転時間がゼロ以下の場合、新しいランダムな反転時間を設定
+            else:
+                reverse_time = random.randint(60, 600)  # 1～10秒のランダムなタイミング
+                player_direction *= reverse_flag  # 進行方向を反転させる
+            if player_direction == -1:
+                reverse_text = font.render("Reversing", True, RED)
+                window.blit(reverse_text, (WINDOW_WIDTH // 2 + 50,  30 ))
         if keys[pygame.K_UP]:
-            player_y -= 5
+            player_y -= 5 * player_direction
         if keys[pygame.K_DOWN]:
-            player_y += 5
+            player_y += 5 * player_direction
         if keys[pygame.K_LEFT]:
-            player_x -= 5
+            player_x -= 5 * player_direction
         if keys[pygame.K_RIGHT]:
-            player_x += 5
+            player_x += 5 * player_direction
         current_time = pygame.time.get_ticks()
         if keys[pygame.K_SPACE] and current_time - last_shoot_time > bullet_cooldown:
             bullet_x = player_x + player_width
-            bullet_y = player_y
+            bullet_y = player_y + player_height // 2
             last_shoot_time = pygame.time.get_ticks()
             bullets.append([bullet_x,bullet_y])	
 
@@ -238,7 +321,7 @@ while True:
         player_x = max(0, min(player_x, WINDOW_WIDTH // 2 - (player_width + 100)))
         player_y = max(60, min(player_y, WINDOW_HEIGHT - player_height))
 
-        drawplayer = position(player_x, player_y, player_width, player_height, BLUE)
+        drawplayer = position(player_x, player_y, player_image)
         drawplayer.draw(window)
         draw_score()
         draw_health()
@@ -246,7 +329,7 @@ while True:
         # 弾の移動と描画
         for bullet in bullets:
             bullet[0] += bullet_speed
-            drawbullet = position(bullet[0], bullet[1], bullet_width, bullet_height, RED)
+            drawbullet = position(bullet[0], bullet[1], bullet_image)
             drawbullet.draw(window)
             # 弾が画面外に出たら削除
             if bullet[0] + enemy_width < 0:
@@ -262,7 +345,7 @@ while True:
         # 敵の移動と描画
         for enemy in enemies:
             enemy[0] -= enemy_speed
-            drawenemy = position(enemy[0], enemy[1], enemy_width, enemy_height, WHITE)
+            drawenemy = position(enemy[0], enemy[1], enemy_image)
             drawenemy.draw(window)
         
             # 敵が画面外に出たら削除
@@ -280,8 +363,9 @@ while True:
                     enemy_rect = pygame.Rect(enemy[0], enemy[1], enemy_width, enemy_height)
                     if bullet_rect.colliderect(enemy_rect):
                         enemies.remove(enemy)
+                        bullets.remove(bullet)
                         game_count += 1
-                        score +=1000
+                        score +=point
                         break
 
         #敵と自機の衝突判定  
@@ -302,12 +386,9 @@ while True:
         # 自機の体力が0以下になった場合ゲームオーバーにする
         if player_health <= 0:
             running = False
-            if high_score < score:
-                high_score = score
-                process_for_seconds(5, game_over, YELLOW)
-            else :
-                process_for_seconds(5, game_over, BLACK)
-           
+
+            process_for_seconds(3, game_over, score, high_score)
+          
             #ゲーム管理フラグのリセット
             game_count = 0
 
